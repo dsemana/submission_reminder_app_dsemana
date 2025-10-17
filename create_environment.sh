@@ -1,36 +1,45 @@
 #!/bin/bash
 
-#get the name of the student and store it in a variable
-echo "What is the name of the student?: "
-read name
+# Prompt user for their name
+read -p "Enter your name: " USERNAME
+MAIN_DIR="submission_reminder_${USERNAME}"
 
-#create the folder of the student
-mkdir submission_reminder_"$name"
-cd submission_reminder_"$name" || exit
+# Create directory structure
+mkdir -p "$MAIN_DIR"/{assets,config,modules,app}
 
-#create folders within
-mkdir -p app modules assets config
+echo "📁 Creating submission reminder environment for $USERNAME..."
 
-touch startup.sh
+# 1. Create and populate submissions.txt
+cat > "$MAIN_DIR/assets/submissions.txt" << 'EOF'
+student, assignment, submission status
+Chinemerem, Shell Navigation, not submitted
+Chiagoziem, Git, submitted
+Divine, Shell Navigation, not submitted
+Anissa, Shell Basics, submitted
+Liam, Shell Navigation, submitted
+Aisha, Shell Navigation, not submitted
+Noah, Shell Navigation, not submitted
+Grace, Shell Basics, submitted
+Emmanuel, Git, not submitted
+Khadija, Shell Navigation, not submitted
+EOF
 
-touch config/config.env
-cd config
-echo -e "
+# 2. Create config.env
+cat > "$MAIN_DIR/config/config.env" << 'EOF'
 # This is the config file
 ASSIGNMENT="Shell Navigation"
 DAYS_REMAINING=2
-" >> config.env
-cd ..
+EOF
 
-touch modules/functions.sh
-cd modules
-
-echo -e "
+# 3. Create functions.sh
+cat > "$MAIN_DIR/modules/functions.sh" << 'EOF'
 #!/bin/bash
+# Function to read submissions file and output students who have not submitted
 function check_submissions {
     local submissions_file=$1
     echo "Checking submissions in $submissions_file"
 
+    # Skip the header and iterate through the lines
     while IFS=, read -r student assignment status; do
         student=$(echo "$student" | xargs)
         assignment=$(echo "$assignment" | xargs)
@@ -39,47 +48,32 @@ function check_submissions {
         if [[ "$assignment" == "$ASSIGNMENT" && "$status" == "not submitted" ]]; then
             echo "Reminder: $student has not submitted the $ASSIGNMENT assignment!"
         fi
-    done < <(tail -n +2 "$submissions_file") 
+    done < <(tail -n +2 "$submissions_file")
+}
+EOF
 
-    " >> functions.sh
-cd ..
-
-touch app/reminder.sh
-cd app
-
-echo -e "
+# 4. Create reminder.sh inside app/
+cat > "$MAIN_DIR/app/reminder.sh" << 'EOF'
 #!/bin/bash
-
-# Source environment variables and helper functions
 source ./config/config.env
 source ./modules/functions.sh
-
-# Path to the submissions file
 submissions_file="./assets/submissions.txt"
 
-# Print remaining time and run the reminder function
 echo "Assignment: $ASSIGNMENT"
 echo "Days remaining to submit: $DAYS_REMAINING days"
 echo "--------------------------------------------"
 
 check_submissions $submissions_file
-" >> reminder.sh
+EOF
 
-cd ..
-touch assets/submissions.txt
-cd assets
-echo -e "
-student, assignment, submission status
-Chinemerem, Shell Navigation, not submitted
-Chiagoziem, Git, submitted
-Divine, Shell Navigation, not submitted
-Anissa, Shell Basics, submitted
-Alain, Python, not submitted
-" >> submissions.txt
-cd ..
+# 5. Create startup.sh in root of app
+cat > "$MAIN_DIR/startup.sh" << 'EOF'
+#!/bin/bash
+echo "Starting Submission Reminder App..."
+bash ./app/reminder.sh
+EOF
 
-chmod +x app/reminder.sh modules/functions.sh startup.sh
+# 6. Make all .sh files executable
+find "$MAIN_DIR" -type f -name "*.sh" -exec chmod +x {} \;
 
-echo "✅ Environment setup complete for student: $name"
-
-cd submission_reminder_$name
+echo "✅ Environment created for $USERNAME"
